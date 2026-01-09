@@ -35,15 +35,19 @@ const getFlashDuration = (level) => {
   return clamp(duration, 600, 2400);
 };
 
+const getHintDelay = (level) => clamp(2400 - level * 160, 700, 2400);
+
 export default function App() {
   const [level, setLevel] = useState(1);
   const [streak, setStreak] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [attempts, setAttempts] = useState(0);
+  const [score, setScore] = useState(0);
   const [target, setTarget] = useState(() => randomSquare());
   const [feedback, setFeedback] = useState('Tap the square that matches the notation!');
   const [labelsVisible, setLabelsVisible] = useState(true);
   const [lockBoard, setLockBoard] = useState(false);
+  const [hintRevealed, setHintRevealed] = useState(false);
 
   const accuracy = attempts === 0 ? 0 : Math.round((correctCount / attempts) * 100);
 
@@ -59,6 +63,13 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [level, target]);
 
+  useEffect(() => {
+    setHintRevealed(false);
+    const delay = getHintDelay(level);
+    const timer = setTimeout(() => setHintRevealed(true), delay);
+    return () => clearTimeout(timer);
+  }, [level, target]);
+
   const displayedFiles = labelsVisible ? FILES : reducedLabels.files;
   const displayedRanks = labelsVisible ? RANKS : reducedLabels.ranks;
 
@@ -68,6 +79,7 @@ export default function App() {
     const picked = `${file}${rank}`;
     const answer = `${target.file}${target.rank}`;
     const isCorrect = picked === answer;
+    const hintUsed = hintRevealed;
 
     setAttempts((prev) => prev + 1);
 
@@ -75,11 +87,16 @@ export default function App() {
       setCorrectCount((prev) => prev + 1);
       setStreak((prev) => prev + 1);
       setLevel((prev) => clamp(prev + 1, 1, 10));
-      setFeedback(`✅ Nailed it! ${picked} is correct.`);
+      const points = hintUsed ? 4 : 10;
+      setScore((prev) => prev + points);
+      setFeedback(
+        `✅ Nailed it! ${picked} is correct. +${points} ${hintUsed ? 'for brave guessing' : 'for speed'}.`,
+      );
     } else {
       setStreak(0);
       setLevel((prev) => clamp(prev - 1, 1, 10));
-      setFeedback(`❌ Oops! That was ${picked}. Try ${answer}.`);
+      setScore((prev) => clamp(prev - 4, 0, 9999));
+      setFeedback(`❌ Oops! That was ${picked}. The right square was ${answer}. -4 points.`);
     }
 
     setTimeout(() => {
@@ -116,7 +133,14 @@ export default function App() {
         <section className="hud">
           <div className="hud-card">
             <p className="hud-title">Target</p>
-            <p className="hud-value target">{target.file}{target.rank}</p>
+            <p className="hud-value target">{hintRevealed ? `${target.file}${target.rank}` : '??'}</p>
+            <p className="hud-sub">
+              {hintRevealed ? 'Hint is live' : 'Hint loading…'}
+            </p>
+          </div>
+          <div className="hud-card">
+            <p className="hud-title">Score</p>
+            <p className="hud-value">{score}</p>
           </div>
           <div className="hud-card">
             <p className="hud-title">Streak</p>
@@ -165,7 +189,7 @@ export default function App() {
         <section className="feedback">
           <p>{feedback}</p>
           <p className="hint">
-            Hints fade faster as you level up. Miss a few and the game chills out.
+            Guess before the hint appears for max points. Hints fade faster as you level up.
           </p>
         </section>
       </main>

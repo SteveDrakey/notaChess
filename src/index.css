@@ -120,6 +120,14 @@ h1 {
   color: #22d3ee;
 }
 
+.hud-sub {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: #c7c4ff;
+}
+
 .board-area {
   display: flex;
   justify-content: center;
