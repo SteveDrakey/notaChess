@@ -169,7 +169,7 @@ h1 {
   border: none;
   border-radius: 12px;
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.2s ease;
+  transition: transform 0.15s ease, box-shadow 2s ease;
 }
 
 .square.light {

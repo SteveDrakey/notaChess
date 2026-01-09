@@ -35,7 +35,7 @@ const getFlashDuration = (level) => {
   return clamp(duration, 600, 2400);
 };
 
-const getHintDelay = (level) => clamp(2400 - level * 160, 700, 2400);
+const getHintDelay = (level) => clamp(2600 - level * 180, 900, 2600);
 
 export default function App() {
   const [level, setLevel] = useState(1);
@@ -47,7 +47,7 @@ export default function App() {
   const [feedback, setFeedback] = useState('Tap the square that matches the notation!');
   const [labelsVisible, setLabelsVisible] = useState(true);
   const [lockBoard, setLockBoard] = useState(false);
-  const [hintRevealed, setHintRevealed] = useState(false);
+  const [hintGlow, setHintGlow] = useState(false);
 
   const accuracy = attempts === 0 ? 0 : Math.round((correctCount / attempts) * 100);
 
@@ -64,9 +64,9 @@ export default function App() {
   }, [level, target]);
 
   useEffect(() => {
-    setHintRevealed(false);
+    setHintGlow(false);
     const delay = getHintDelay(level);
-    const timer = setTimeout(() => setHintRevealed(true), delay);
+    const timer = setTimeout(() => setHintGlow(true), delay);
     return () => clearTimeout(timer);
   }, [level, target]);
 
@@ -79,18 +79,20 @@ export default function App() {
     const picked = `${file}${rank}`;
     const answer = `${target.file}${target.rank}`;
     const isCorrect = picked === answer;
-    const hintUsed = hintRevealed;
+    const hintUsed = hintGlow;
 
     setAttempts((prev) => prev + 1);
 
     if (isCorrect) {
       setCorrectCount((prev) => prev + 1);
-      setStreak((prev) => prev + 1);
+      if (!hintUsed) {
+        setStreak((prev) => prev + 1);
+      }
       setLevel((prev) => clamp(prev + 1, 1, 10));
       const points = hintUsed ? 4 : 10;
       setScore((prev) => prev + points);
       setFeedback(
-        `✅ Nailed it! ${picked} is correct. +${points} ${hintUsed ? 'for brave guessing' : 'for speed'}.`,
+        `✅ Nailed it! ${picked} is correct. +${points} ${hintUsed ? 'for glow assist' : 'for speed'}.`,
       );
     } else {
       setStreak(0);
@@ -133,9 +135,9 @@ export default function App() {
         <section className="hud">
           <div className="hud-card">
             <p className="hud-title">Target</p>
-            <p className="hud-value target">{hintRevealed ? `${target.file}${target.rank}` : '??'}</p>
+            <p className="hud-value target">{target.file}{target.rank}</p>
             <p className="hud-sub">
-              {hintRevealed ? 'Hint is live' : 'Hint loading…'}
+              {hintGlow ? 'Glow is live' : 'Glow charging…'}
             </p>
           </div>
           <div className="hud-card">
@@ -162,7 +164,7 @@ export default function App() {
                 <div className="rank-squares">
                   {FILES.map((file, fileIndex) => {
                     const isDark = (fileIndex + rank) % 2 === 1;
-                    const isTarget = target.file === file && target.rank === rank;
+                    const isTarget = hintGlow && target.file === file && target.rank === rank;
                     return (
                       <button
                         key={`${file}${rank}`}
@@ -189,7 +191,7 @@ export default function App() {
         <section className="feedback">
           <p>{feedback}</p>
           <p className="hint">
-            Guess before the hint appears for max points. Hints fade faster as you level up.
+            Hit it before the glow appears for max points (and streaks). Glow arrives slower at low levels.
           </p>
         </section>
       </main>
