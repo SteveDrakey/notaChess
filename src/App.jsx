@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 const RANKS = [8, 7, 6, 5, 4, 3, 2, 1];
@@ -11,30 +11,6 @@ const randomSquare = () => {
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
-const getReducedLabels = (level) => {
-  if (level < 5) {
-    return { files: [], ranks: [] };
-  }
-  if (level < 7) {
-    return {
-      files: FILES.filter((_, index) => index % 2 === 0),
-      ranks: RANKS.filter((_, index) => index % 2 === 0),
-    };
-  }
-  if (level < 9) {
-    return { files: ['a', 'd', 'h'], ranks: [8, 5, 1] };
-  }
-  return { files: ['a', 'h'], ranks: [8, 1] };
-};
-
-const getFlashDuration = (level) => {
-  if (level <= 1) {
-    return null;
-  }
-  const duration = 2400 - level * 220;
-  return clamp(duration, 500, 2200);
-};
-
 const getHintDelay = (level) => clamp(2600 - level * 180, 900, 2600);
 const getFlipInterval = () => Math.floor(Math.random() * 6) + 5;
 
@@ -46,26 +22,14 @@ export default function App() {
   const [score, setScore] = useState(0);
   const [target, setTarget] = useState(() => randomSquare());
   const [feedback, setFeedback] = useState('Tap the square that matches the notation!');
-  const [labelsVisible, setLabelsVisible] = useState(true);
   const [lockBoard, setLockBoard] = useState(false);
   const [hintGlow, setHintGlow] = useState(false);
   const [turnCount, setTurnCount] = useState(0);
   const [nextFlipAt, setNextFlipAt] = useState(() => getFlipInterval());
   const [boardFlipped, setBoardFlipped] = useState(false);
+  const [flipBurst, setFlipBurst] = useState(false);
 
   const accuracy = attempts === 0 ? 0 : Math.round((correctCount / attempts) * 100);
-
-  const reducedLabels = useMemo(() => getReducedLabels(level), [level]);
-
-  useEffect(() => {
-    setLabelsVisible(true);
-    const duration = getFlashDuration(level);
-    if (!duration) {
-      return undefined;
-    }
-    const timer = setTimeout(() => setLabelsVisible(false), duration);
-    return () => clearTimeout(timer);
-  }, [level, target]);
 
   useEffect(() => {
     setHintGlow(false);
@@ -74,8 +38,8 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [level, target]);
 
-  const displayedFiles = labelsVisible ? FILES : reducedLabels.files;
-  const displayedRanks = labelsVisible ? RANKS : reducedLabels.ranks;
+  const displayedFiles = FILES;
+  const displayedRanks = RANKS;
 
   const handleSquarePick = (file, rank) => {
     if (lockBoard) return;
@@ -93,6 +57,7 @@ export default function App() {
     if (shouldFlip) {
       setBoardFlipped((prev) => !prev);
       setNextFlipAt(newTurnCount + getFlipInterval());
+      setFlipBurst(true);
     }
 
     if (isCorrect) {
@@ -123,13 +88,12 @@ export default function App() {
       setTarget(randomSquare());
       setLockBoard(false);
     }, 700);
+    if (shouldFlip) {
+      setTimeout(() => setFlipBurst(false), 900);
+    }
   };
 
-  const labelMode = labelsVisible
-    ? 'Full glow'
-    : reducedLabels.files.length === 0
-      ? 'No hints'
-      : 'Ghost hints';
+  const labelMode = hintGlow ? 'Glow assist' : 'Pure read';
 
   return (
     <div className="app">
@@ -173,7 +137,11 @@ export default function App() {
         </section>
 
         <section className="board-area">
-          <div className={`board ${boardFlipped ? 'flipped' : ''} ${lockBoard ? 'locked' : ''}`}>
+          <div
+            className={`board ${boardFlipped ? 'flipped' : ''} ${flipBurst ? 'flip-burst' : ''} ${
+              lockBoard ? 'locked' : ''
+            }`}
+          >
             {RANKS.map((rank) => (
               <div key={rank} className="rank-row">
                 <div className="rank-label">
@@ -209,7 +177,7 @@ export default function App() {
         <section className="feedback">
           <p>{feedback}</p>
           <p className="hint">
-            Letters vanish faster as you level up. Hit it before the glow appears for max points (and streaks).
+            Edge letters stay on for grounding. Hit it before the glow appears for max points (and streaks).
           </p>
         </section>
       </main>

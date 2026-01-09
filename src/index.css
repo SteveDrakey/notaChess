@@ -150,6 +150,10 @@ h1 {
   transform: rotate(180deg);
 }
 
+.board.flip-burst {
+  animation: uno-flip 0.9s ease-in-out;
+}
+
 .board.flipped .rank-label,
 .board.flipped .file-label {
   transform: rotate(180deg);
@@ -242,5 +246,24 @@ h1 {
 
   .file-labels {
     left: 32px;
+  }
+}
+
+@keyframes uno-flip {
+  0% {
+    transform: rotate(0deg) scale(1);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+  }
+  35% {
+    transform: rotate(200deg) scale(1.08);
+    box-shadow: 0 25px 60px rgba(124, 58, 237, 0.55);
+  }
+  70% {
+    transform: rotate(400deg) scale(0.94);
+    box-shadow: 0 18px 40px rgba(34, 211, 238, 0.45);
+  }
+  100% {
+    transform: rotate(540deg) scale(1);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
   }
 }
