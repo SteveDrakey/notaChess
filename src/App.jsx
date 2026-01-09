@@ -28,14 +28,15 @@ const getReducedLabels = (level) => {
 };
 
 const getFlashDuration = (level) => {
-  if (level <= 2) {
+  if (level <= 1) {
     return null;
   }
-  const duration = 2600 - level * 200;
-  return clamp(duration, 600, 2400);
+  const duration = 2400 - level * 220;
+  return clamp(duration, 500, 2200);
 };
 
 const getHintDelay = (level) => clamp(2600 - level * 180, 900, 2600);
+const getFlipInterval = () => Math.floor(Math.random() * 6) + 5;
 
 export default function App() {
   const [level, setLevel] = useState(1);
@@ -48,6 +49,9 @@ export default function App() {
   const [labelsVisible, setLabelsVisible] = useState(true);
   const [lockBoard, setLockBoard] = useState(false);
   const [hintGlow, setHintGlow] = useState(false);
+  const [turnCount, setTurnCount] = useState(0);
+  const [nextFlipAt, setNextFlipAt] = useState(() => getFlipInterval());
+  const [boardFlipped, setBoardFlipped] = useState(false);
 
   const accuracy = attempts === 0 ? 0 : Math.round((correctCount / attempts) * 100);
 
@@ -80,8 +84,16 @@ export default function App() {
     const answer = `${target.file}${target.rank}`;
     const isCorrect = picked === answer;
     const hintUsed = hintGlow;
+    const newTurnCount = turnCount + 1;
+    const shouldFlip = newTurnCount >= nextFlipAt;
 
     setAttempts((prev) => prev + 1);
+    setTurnCount((prev) => prev + 1);
+
+    if (shouldFlip) {
+      setBoardFlipped((prev) => !prev);
+      setNextFlipAt(newTurnCount + getFlipInterval());
+    }
 
     if (isCorrect) {
       setCorrectCount((prev) => prev + 1);
@@ -92,13 +104,19 @@ export default function App() {
       const points = hintUsed ? 4 : 10;
       setScore((prev) => prev + points);
       setFeedback(
-        `✅ Nailed it! ${picked} is correct. +${points} ${hintUsed ? 'for glow assist' : 'for speed'}.`,
+        `✅ Nailed it! ${picked} is correct. +${points} ${hintUsed ? 'for glow assist' : 'for speed'}.${
+          shouldFlip ? ' 🔄 UNO flip!' : ''
+        }`,
       );
     } else {
       setStreak(0);
       setLevel((prev) => clamp(prev - 1, 1, 10));
       setScore((prev) => clamp(prev - 4, 0, 9999));
-      setFeedback(`❌ Oops! That was ${picked}. The right square was ${answer}. -4 points.`);
+      setFeedback(
+        `❌ Oops! That was ${picked}. The right square was ${answer}. -4 points.${
+          shouldFlip ? ' 🔄 UNO flip!' : ''
+        }`,
+      );
     }
 
     setTimeout(() => {
@@ -155,7 +173,7 @@ export default function App() {
         </section>
 
         <section className="board-area">
-          <div className={`board ${lockBoard ? 'locked' : ''}`}>
+          <div className={`board ${boardFlipped ? 'flipped' : ''} ${lockBoard ? 'locked' : ''}`}>
             {RANKS.map((rank) => (
               <div key={rank} className="rank-row">
                 <div className="rank-label">
@@ -191,7 +209,7 @@ export default function App() {
         <section className="feedback">
           <p>{feedback}</p>
           <p className="hint">
-            Hit it before the glow appears for max points (and streaks). Glow arrives slower at low levels.
+            Letters vanish faster as you level up. Hit it before the glow appears for max points (and streaks).
           </p>
         </section>
       </main>
