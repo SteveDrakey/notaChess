@@ -1,0 +1,186 @@
+import { useEffect, useState } from 'react';
+
+const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+const RANKS = [8, 7, 6, 5, 4, 3, 2, 1];
+
+const randomSquare = () => {
+  const file = FILES[Math.floor(Math.random() * FILES.length)];
+  const rank = RANKS[Math.floor(Math.random() * RANKS.length)];
+  return { file, rank };
+};
+
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+const getHintDelay = (level) => clamp(2600 - level * 180, 900, 2600);
+const getFlipInterval = () => Math.floor(Math.random() * 6) + 5;
+
+export default function App() {
+  const [level, setLevel] = useState(1);
+  const [streak, setStreak] = useState(0);
+  const [correctCount, setCorrectCount] = useState(0);
+  const [attempts, setAttempts] = useState(0);
+  const [score, setScore] = useState(0);
+  const [target, setTarget] = useState(() => randomSquare());
+  const [feedback, setFeedback] = useState('Tap the square that matches the notation!');
+  const [lockBoard, setLockBoard] = useState(false);
+  const [hintGlow, setHintGlow] = useState(false);
+  const [turnCount, setTurnCount] = useState(0);
+  const [nextFlipAt, setNextFlipAt] = useState(() => getFlipInterval());
+  const [boardFlipped, setBoardFlipped] = useState(false);
+  const [flipBurst, setFlipBurst] = useState(false);
+
+  const accuracy = attempts === 0 ? 0 : Math.round((correctCount / attempts) * 100);
+
+  useEffect(() => {
+    setHintGlow(false);
+    const delay = getHintDelay(level);
+    const timer = setTimeout(() => setHintGlow(true), delay);
+    return () => clearTimeout(timer);
+  }, [level, target]);
+
+  const displayedFiles = FILES;
+  const displayedRanks = RANKS;
+
+  const handleSquarePick = (file, rank) => {
+    if (lockBoard) return;
+    setLockBoard(true);
+    const picked = `${file}${rank}`;
+    const answer = `${target.file}${target.rank}`;
+    const isCorrect = picked === answer;
+    const hintUsed = hintGlow;
+    const newTurnCount = turnCount + 1;
+    const shouldFlip = newTurnCount >= nextFlipAt;
+
+    setAttempts((prev) => prev + 1);
+    setTurnCount((prev) => prev + 1);
+
+    if (shouldFlip) {
+      setBoardFlipped((prev) => !prev);
+      setNextFlipAt(newTurnCount + getFlipInterval());
+      setFlipBurst(true);
+    }
+
+    if (isCorrect) {
+      setCorrectCount((prev) => prev + 1);
+      if (!hintUsed) {
+        setStreak((prev) => prev + 1);
+      }
+      setLevel((prev) => clamp(prev + 1, 1, 10));
+      const points = hintUsed ? 4 : 10;
+      setScore((prev) => prev + points);
+      setFeedback(
+        `✅ Nailed it! ${picked} is correct. +${points} ${hintUsed ? 'for glow assist' : 'for speed'}.${
+          shouldFlip ? ' 🔄 UNO flip!' : ''
+        }`,
+      );
+    } else {
+      setStreak(0);
+      setLevel((prev) => clamp(prev - 1, 1, 10));
+      setScore((prev) => clamp(prev - 4, 0, 9999));
+      setFeedback(
+        `❌ Oops! That was ${picked}. The right square was ${answer}. -4 points.${
+          shouldFlip ? ' 🔄 UNO flip!' : ''
+        }`,
+      );
+    }
+
+    setTimeout(() => {
+      setTarget(randomSquare());
+      setLockBoard(false);
+    }, 700);
+    if (shouldFlip) {
+      setTimeout(() => setFlipBurst(false), 900);
+    }
+  };
+
+  const labelMode = hintGlow ? 'Glow assist' : 'Pure read';
+
+  return (
+    <div className="app">
+      <header className="hero">
+        <div>
+          <p className="tag">NotaChess</p>
+          <h1>Learn chess notation like a neon ninja.</h1>
+          <p className="sub">
+            Read the target, find the square, and level up. Lose focus and the board will fade the
+            hints.
+          </p>
+        </div>
+        <div className="badge">
+          <span className="badge-label">Level</span>
+          <span className="badge-value">{level}</span>
+          <span className="badge-mode">{labelMode}</span>
+        </div>
+      </header>
+
+      <main className="game">
+        <section className="hud">
+          <div className="hud-card">
+            <p className="hud-title">Target</p>
+            <p className="hud-value target">{target.file}{target.rank}</p>
+            <p className="hud-sub">
+              {hintGlow ? 'Glow is live' : 'Glow charging…'}
+            </p>
+          </div>
+          <div className="hud-card">
+            <p className="hud-title">Score</p>
+            <p className="hud-value">{score}</p>
+          </div>
+          <div className="hud-card">
+            <p className="hud-title">Streak</p>
+            <p className="hud-value">{streak}</p>
+          </div>
+          <div className="hud-card">
+            <p className="hud-title">Accuracy</p>
+            <p className="hud-value">{accuracy}%</p>
+          </div>
+        </section>
+
+        <section className="board-area">
+          <div
+            className={`board ${boardFlipped ? 'flipped' : ''} ${flipBurst ? 'flip-burst' : ''} ${
+              lockBoard ? 'locked' : ''
+            }`}
+          >
+            {RANKS.map((rank) => (
+              <div key={rank} className="rank-row">
+                <div className="rank-label">
+                  {displayedRanks.includes(rank) ? rank : ''}
+                </div>
+                <div className="rank-squares">
+                  {FILES.map((file, fileIndex) => {
+                    const isDark = (fileIndex + rank) % 2 === 1;
+                    const isTarget = hintGlow && target.file === file && target.rank === rank;
+                    return (
+                      <button
+                        key={`${file}${rank}`}
+                        type="button"
+                        className={`square ${isDark ? 'dark' : 'light'} ${isTarget ? 'target' : ''}`}
+                        onClick={() => handleSquarePick(file, rank)}
+                        aria-label={`Square ${file}${rank}`}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            <div className="file-labels">
+              {FILES.map((file) => (
+                <span key={file} className="file-label">
+                  {displayedFiles.includes(file) ? file : ''}
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="feedback">
+          <p>{feedback}</p>
+          <p className="hint">
+            Edge letters stay on for grounding. Hit it before the glow appears for max points (and streaks).
+          </p>
+        </section>
+      </main>
+    </div>
+  );
+}
